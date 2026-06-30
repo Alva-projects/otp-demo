@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <title>OTP-demo</title>
+  <style>
+    body { font-family: sans-serif; max-width: 360px; margin: 4rem auto; }
+    input, button { font-size: 1rem; padding: 0.5rem; width: 100%; margin-top: 0.5rem; box-sizing: border-box; }
+    #status { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Verifiera ditt nummer</h1>
+
+  <div id="step-phone">
+    <label>Telefonnummer (t.ex. +46701234567)</label>
+    <input id="phone" type="tel" placeholder="+46701234567" />
+    <button id="send">Skicka kod</button>
+  </div>
+
+  <div id="step-code" style="display:none">
+    <label>Ange koden du fick via SMS</label>
+    <input id="code" type="text" inputmode="numeric" maxlength="6" />
+    <button id="verify">Verifiera</button>
+  </div>
+
+  <div id="status"></div>
+
+  <script>
+    const status = document.getElementById('status');
+    let phone = '';
+
+    document.getElementById('send').onclick = async () => {
+      phone = document.getElementById('phone').value.trim();
+      status.textContent = 'Skickar...';
+      const res = await fetch('/otp/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        status.textContent = 'Kod skickad! Kolla din SMS.';
+        document.getElementById('step-code').style.display = 'block';
+      } else {
+        status.textContent = 'Fel: ' + data.error;
+      }
+    };
+
+    document.getElementById('verify').onclick = async () => {
+      const code = document.getElementById('code').value.trim();
+      status.textContent = 'Verifierar...';
+      const res = await fetch('/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code }),
+      });
+      const data = await res.json();
+      status.textContent = res.ok ? 'Verifierad! Formuläret kan skickas in.' : 'Fel: ' + data.error;
+    };
+  </script>
+</body>
+</html>
