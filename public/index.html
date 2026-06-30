@@ -3,15 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <title>OTP-demo</title>
-  <style>
-    body { font-family: sans-serif; max-width: 360px; margin: 4rem auto; }
-    input, button { font-size: 1rem; padding: 0.5rem; width: 100%; margin-top: 0.5rem; box-sizing: border-box; }
-    #status { margin-top: 1rem; }
-  </style>
+  <link rel="stylesheet" href="index.css" />
 </head>
 <body>
   <h1>Verifiera ditt nummer</h1>
-
+  <h2>Få en engångskod via SMS och skicka ett meddelande</h2>
   <div id="step-phone">
     <label>Telefonnummer (t.ex. +46701234567)</label>
     <input id="phone" type="tel" placeholder="+46701234567" />
@@ -24,11 +20,33 @@
     <button id="verify">Verifiera</button>
   </div>
 
+  <div id="step-form" style="display:none">
+    <label>Meddelande</label>
+    <input id="message" type="text" placeholder="Skriv något..." maxlength="160" />
+    <button id="submit">Skicka</button>
+    <pre id="sms-response"></pre>
+  </div>
+
   <div id="status"></div>
 
   <script>
     const status = document.getElementById('status');
     let phone = '';
+
+    const SPARKLES = ['✨', '💖', '🌟', '⭐'];
+    let lastSparkle = 0;
+    document.addEventListener('mousemove', (e) => {
+      const now = Date.now();
+      if (now - lastSparkle < 50) return;
+      lastSparkle = now;
+      const el = document.createElement('span');
+      el.className = 'sparkle';
+      el.textContent = SPARKLES[Math.floor(Math.random() * SPARKLES.length)];
+      el.style.left = e.clientX + 'px';
+      el.style.top = e.clientY + 'px';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 800);
+    });
 
     document.getElementById('send').onclick = async () => {
       phone = document.getElementById('phone').value.trim();
@@ -56,7 +74,30 @@
         body: JSON.stringify({ phone, code }),
       });
       const data = await res.json();
-      status.textContent = res.ok ? 'Verifierad! Formuläret kan skickas in.' : 'Fel: ' + data.error;
+      if (res.ok) {
+        status.textContent = 'Verifierad!';
+        document.getElementById('step-code').style.display = 'none';
+        document.getElementById('step-form').style.display = 'block';
+      } else {
+        status.textContent = 'Fel: ' + data.error;
+      }
+    };
+
+    document.getElementById('submit').onclick = async () => {
+      const message = document.getElementById('message').value.trim();
+      status.textContent = 'Skickar...';
+      const res = await fetch('/form/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, message }),
+      });
+      const data = await res.json();
+      document.getElementById('sms-response').textContent = JSON.stringify(data.elksResponse, null, 2);
+      if (res.ok) {
+        status.textContent = 'Tack! Meddelandet är skickat.';
+      } else {
+        status.textContent = 'Fel: ' + data.error;
+      }
     };
   </script>
 </body>
